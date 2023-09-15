@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/usr/bin/bash
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -10,7 +10,7 @@ source "${_DEVTOOLS_LIBRARY_DIR}"/lib/common.sh
 source "${_DEVTOOLS_LIBRARY_DIR}"/lib/archroot.sh
 
 
-source /usr/share/makepkg/util/config.sh
+source /data/usr/share/makepkg/util/config.sh
 
 shopt -s nullglob
 
@@ -142,7 +142,7 @@ install_packages() {
 	pkgnames=("${install_pkgs[@]##*/}")
 
 	cp -- "${install_pkgs[@]}" "$copydir/root/"
-	arch-nspawn "$copydir" "${bindmounts_ro[@]}" "${bindmounts_rw[@]}" \
+	arch-chroot "$copydir" "${bindmounts_ro[@]}" "${bindmounts_rw[@]}" \
 		bash -c 'yes y | pacman -U -- "$@"' -bash "${pkgnames[@]/#//root/}"
 	ret=$?
 	rm -- "${pkgnames[@]/#/$copydir/root/}"
@@ -162,10 +162,10 @@ prepare_chroot() {
 	# We can't use useradd without chrooting, otherwise it invokes PAM modules
 	# which we might not be able to load (i.e. when building i686 packages on
 	# an x86_64 host).
-	sed -e '/^builduser:/d' -i "$copydir"/etc/{passwd,shadow,group}
-	printf >>"$copydir/etc/group"  'builduser:x:%d:\n' "$builduser_gid"
-	printf >>"$copydir/etc/passwd" 'builduser:x:%d:%d:builduser:/build:/bin/bash\n' "$builduser_uid" "$builduser_gid"
-	printf >>"$copydir/etc/shadow" 'builduser:!!:%d::::::\n' "$(( $(date -u +%s) / 86400 ))"
+	sed -e '/^builduser:/d' -i "$copydir"/data/etc/{passwd,shadow,group}
+	printf >>"$copydir/data/etc/group"  'builduser:x:%d:\n' "$builduser_gid"
+	printf >>"$copydir/data/etc/passwd" 'builduser:x:%d:%d:builduser:/build:/bin/bash\n' "$builduser_uid" "$builduser_gid"
+	printf >>"$copydir/data/etc/shadow" 'builduser:!!:%d::::::\n' "$(( $(date -u +%s) / 86400 ))"
 
 	$install -d "$copydir"/{build,startdir,{pkg,srcpkg,src,log}dest}
 
@@ -173,14 +173,14 @@ prepare_chroot() {
 	for x in BUILDDIR=/build PKGDEST=/pkgdest SRCPKGDEST=/srcpkgdest SRCDEST=/srcdest LOGDEST=/logdest \
 		"MAKEFLAGS='${MAKEFLAGS:-}'" "PACKAGER='${PACKAGER:-}'"
 	do
-		grep -q "^$x" "$copydir/etc/makepkg.conf" && continue
-		echo "$x" >>"$copydir/etc/makepkg.conf"
+		grep -q "^$x" "$copydir/data/etc/makepkg.conf" && continue
+		echo "$x" >>"$copydir/data/etc/makepkg.conf"
 	done
 
-	cat > "$copydir/etc/sudoers.d/builduser-pacman" <<EOF
-builduser ALL = NOPASSWD: /usr/bin/pacman
+	cat > "$copydir/data/etc/sudoers.d/builduser-pacman" <<EOF
+builduser ALL = NOPASSWD: /data/usr/bin/pacman
 EOF
-	chmod 440 "$copydir/etc/sudoers.d/builduser-pacman"
+	chmod 440 "$copydir/data/etc/sudoers.d/builduser-pacman"
 
 	# This is a little gross, but this way the script is recreated every time in the
 	# working copy
@@ -207,7 +207,7 @@ _chrootbuild() {
 	ulimit -c 0
 
 	# shellcheck source=/dev/null
-	. /etc/profile
+	. /data/etc/profile
 
 	# Beware, there are some stupid arbitrary rules on how you can
 	# use "$" in arguments to commands with "sudo -i".  ${foo} or
@@ -241,7 +241,7 @@ download_sources() {
 	# Ensure sources are downloaded
 	sudo -u "$makepkg_user" --preserve-env=GNUPGHOME,SSH_AUTH_SOCK \
 		env SRCDEST="$SRCDEST" BUILDDIR="$WORKDIR" \
-		makepkg --config="$copydir/etc/makepkg.conf" --verifysource -o "${verifysource_args[@]}" ||
+		makepkg --config="$copydir/data/etc/makepkg.conf" --verifysource -o "${verifysource_args[@]}" ||
 		die "Could not download sources."
 }
 
@@ -348,7 +348,7 @@ if [[ ! -d $copydir ]] || (( clean_first )); then
 	sync_chroot "$chrootdir" "$copydir" "$copy"
 fi
 
-(( update_first )) && arch-nspawn "$copydir" \
+(( update_first )) && arch-chroot "$copydir" \
 		"${bindmounts_ro[@]}" "${bindmounts_rw[@]}" \
 		pacman -Syuu --noconfirm
 
@@ -394,8 +394,8 @@ else
 	if (( run_checkpkg )); then
 		msg "Running checkpkg"
 
-		mapfile -t remotepkgs < <(pacman --config "$copydir"/etc/pacman.conf \
-			--dbpath "$copydir"/var/lib/pacman \
+		mapfile -t remotepkgs < <(pacman --config "$copydir"/data/etc/pacman.conf \
+			--dbpath "$copydir"/data/var/lib/pacman \
 			-Sddp "${pkgnames[@]}")
 
 		if ! wait $!; then
@@ -407,16 +407,16 @@ else
 		for remotepkg in "${remotepkgs[@]}"; do
 			if [[ $remotepkg != file://* ]]; then
 				msg2 "Downloading current versions"
-				arch-nspawn "$copydir" pacman --noconfirm -Swdd "${pkgnames[@]}"
-				mapfile -t remotepkgs < <(pacman --config "$copydir"/etc/pacman.conf \
-					--dbpath "$copydir"/var/lib/pacman \
+				arch-chroot "$copydir" pacman --noconfirm -Swdd "${pkgnames[@]}"
+				mapfile -t remotepkgs < <(pacman --config "$copydir"/data/etc/pacman.conf \
+					--dbpath "$copydir"/data/var/lib/pacman \
 					-Sddp "${pkgnames[@]}")
 				break
 			fi
 		done
 
 		msg2 "Checking packages"
-		sudo -u "$makepkg_user" checkpkg --rmdir --warn --makepkg-config "$copydir/etc/makepkg.conf" "${remotepkgs[@]/#file:\/\//}"
+		sudo -u "$makepkg_user" checkpkg --rmdir --warn --makepkg-config "$copydir/data/etc/makepkg.conf" "${remotepkgs[@]/#file:\/\//}"
 	fi
 	true
 fi

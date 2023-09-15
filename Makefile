@@ -1,4 +1,4 @@
-SHELL=/bin/bash
+SHELL=/data/usr/bin/bash
 
 V=1.0.3
 BUILDTOOLVER ?= $(V)

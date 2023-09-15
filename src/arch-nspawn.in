@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/usr/bin/bash
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -19,7 +19,7 @@ files=()
 
 usage() {
 	echo "Usage: ${0##*/} [options] working-dir [systemd-nspawn arguments]"
-	echo "A wrapper around systemd-nspawn. Provides support for pacman."
+	echo "A wrapper around arch-chroot that is compatible with Arch Linux's arch-nspawn."
 	echo
 	echo ' options:'
 	echo '    -C <file>     Location of a pacman config file'
@@ -55,18 +55,10 @@ shift 1
 
 [[ -z $working_dir ]] && die 'Please specify a working directory.'
 
-nspawn_args=(
-	--quiet
-	--directory="$working_dir"
-	--setenv="PATH=/usr/local/sbin:/usr/local/bin:/usr/bin"
-	--register=no
-	--slice="devtools-$(systemd-escape "${SUDO_USER:-$USER}")"
-	--machine="arch-nspawn-$$"
-	--as-pid2
-)
+nspawn_args=()
 
 if (( ${#cache_dirs[@]} == 0 )); then
-	mapfile -t cache_dirs < <(pacman-conf --config "${pac_conf:-$working_dir/etc/pacman.conf}" CacheDir)
+	mapfile -t cache_dirs < <(pacman-conf --config "${pac_conf:-$working_dir/data/etc/pacman.conf}" CacheDir)
 fi
 
 # shellcheck disable=2016
@@ -82,7 +74,7 @@ for host_mirror in "${host_mirrors[@]}"; do
 done
 
 while read -r line; do
-	mapfile -t lines < <(pacman-conf --config "${pac_conf:-$working_dir/etc/pacman.conf}" \
+	mapfile -t lines < <(pacman-conf --config "${pac_conf:-$working_dir/data/etc/pacman.conf}" \
 		--repo $line Server | sed -r 's#(.*/)[^/]+/os/.+#\1#')
 	for line in "${lines[@]}"; do
 		if [[ $line = file://* ]]; then
@@ -90,23 +82,23 @@ while read -r line; do
 			in_array "$line" "${cache_dirs[@]}" || cache_dirs+=("$line")
 		fi
 	done
-done < <(pacman-conf --config "${pac_conf:-$working_dir/etc/pacman.conf}" --repo-list)
+done < <(pacman-conf --config "${pac_conf:-$working_dir/data/etc/pacman.conf}" --repo-list)
 
-nspawn_args+=(--bind="${cache_dirs[0]//:/\\:}")
+nspawn_args+=("--bind ${cache_dirs[0]//:/\\:} $working_dir/${cache_dirs[0]//:/\\:}")
 
 for cache_dir in "${cache_dirs[@]:1}"; do
-	nspawn_args+=(--bind-ro="${cache_dir//:/\\:}")
+	nspawn_args+=("--bind -o ro ${cache_dir//:/\\:} $working_dir/${cache_dirs[0]//:/\\:}")
 done
 
 # {{{ functions
 copy_hostconf () {
-	unshare --fork --pid gpg --homedir "$working_dir"/etc/pacman.d/gnupg/ --no-permission-warning --quiet --batch --import --import-options import-local-sigs "$(pacman-conf GpgDir)"/pubring.gpg >/dev/null 2>&1
-	pacman-key --gpgdir "$working_dir"/etc/pacman.d/gnupg/ --import-trustdb "$(pacman-conf GpgDir)" >/dev/null 2>&1
+	unshare --fork --pid gpg --homedir "$working_dir"/data/etc/pacman.d/gnupg/ --no-permission-warning --quiet --batch --import --import-options import-local-sigs "$(pacman-conf GpgDir)"/pubring.gpg >/dev/null 2>&1
+	pacman-key --gpgdir "$working_dir"/data/etc/pacman.d/gnupg/ --import-trustdb "$(pacman-conf GpgDir)" >/dev/null 2>&1
 
-	printf 'Server = %s\n' "${host_mirrors[@]}" >"$working_dir/etc/pacman.d/mirrorlist"
+	printf 'Server = %s\n' "${host_mirrors[@]}" >"$working_dir/data/etc/pacman.d/mirrorlist"
 
-	[[ -n $pac_conf ]] && cp "$pac_conf" "$working_dir/etc/pacman.conf"
-	[[ -n $makepkg_conf ]] && cp "$makepkg_conf" "$working_dir/etc/makepkg.conf"
+	[[ -n $pac_conf ]] && cp "$pac_conf" "$working_dir/data/etc/pacman.conf"
+	[[ -n $makepkg_conf ]] && cp "$makepkg_conf" "$working_dir/data/etc/makepkg.conf"
 
 	local file
 	for file in "${files[@]}"; do
@@ -114,7 +106,7 @@ copy_hostconf () {
 		cp -T "$file" "$working_dir$file"
 	done
 
-	sed -r "s|^#?\\s*CacheDir.+|CacheDir = ${cache_dirs[*]}|g" -i "$working_dir/etc/pacman.conf"
+	sed -r "s|^#?\\s*CacheDir.+|CacheDir = ${cache_dirs[*]}|g" -i "$working_dir/data/etc/pacman.conf"
 }
 # }}}
 
@@ -129,7 +121,7 @@ fi
 
 copy_hostconf
 
-eval "$(grep -a '^CARCH=' "$working_dir/etc/makepkg.conf")"
+eval "$(grep -a '^CARCH=' "$working_dir/data/etc/makepkg.conf")"
 
 [[ -z $nosetarch ]] || unset CARCH
 if [[ -f "@pkgdatadir@/setarch-aliases.d/${CARCH}" ]]; then
@@ -138,4 +130,4 @@ else
 	set_arch="${CARCH}"
 fi
 
-exec ${CARCH:+setarch "$set_arch"} systemd-nspawn "${nspawn_args[@]}" "$@"
+exec ${CARCH:+setarch "$set_arch"} arch-chroot "$working_dir" "$@"
