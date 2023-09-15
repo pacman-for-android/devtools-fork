@@ -9,7 +9,7 @@ _DEVTOOLS_LIBRARY_DIR=${_DEVTOOLS_LIBRARY_DIR:-@pkgdatadir@}
 # shellcheck source=src/lib/common.sh
 source "${_DEVTOOLS_LIBRARY_DIR}"/lib/common.sh
 
-source /usr/share/makepkg/util/message.sh
+source /data/usr/share/makepkg/util/message.sh
 
 set -e
 

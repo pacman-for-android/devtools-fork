@@ -9,7 +9,7 @@ DEVTOOLS_INCLUDE_COMMON_SH="$(set +o|grep nounset)"
 
 set +u +o posix
 # shellcheck disable=1091
-. /usr/share/makepkg/util.sh
+. /data/usr/share/makepkg/util.sh
 $DEVTOOLS_INCLUDE_COMMON_SH
 
 # Avoid any encoding problems
@@ -20,7 +20,7 @@ export BUILDTOOL=devtools
 export BUILDTOOLVER=@buildtoolver@
 
 # Set common properties
-export PACMAN_KEYRING_DIR=/etc/pacman.d/gnupg
+export PACMAN_KEYRING_DIR=/data/etc/pacman.d/gnupg
 export GITLAB_HOST=gitlab.archlinux.org
 export GIT_REPO_SPEC_VERSION=1
 export GIT_PACKAGING_NAMESPACE=archlinux/packaging/packages

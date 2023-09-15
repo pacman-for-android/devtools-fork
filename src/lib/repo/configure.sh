@@ -11,8 +11,8 @@ source "${_DEVTOOLS_LIBRARY_DIR}"/lib/common.sh
 # shellcheck source=src/lib/api/gitlab.sh
 source "${_DEVTOOLS_LIBRARY_DIR}"/lib/api/gitlab.sh
 
-source /usr/share/makepkg/util/config.sh
-source /usr/share/makepkg/util/message.sh
+source /data/usr/share/makepkg/util/config.sh
+source /data/usr/share/makepkg/util/message.sh
 
 set -e
 

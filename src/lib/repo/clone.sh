@@ -13,7 +13,7 @@ source "${_DEVTOOLS_LIBRARY_DIR}"/lib/api/gitlab.sh
 # shellcheck source=src/lib/repo/configure.sh
 source "${_DEVTOOLS_LIBRARY_DIR}"/lib/repo/configure.sh
 
-source /usr/share/makepkg/util/message.sh
+source /data/usr/share/makepkg/util/message.sh
 
 set -e
 

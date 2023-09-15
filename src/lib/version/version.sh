@@ -7,7 +7,7 @@ DEVTOOLS_INCLUDE_VERSION_SH=1
 
 _DEVTOOLS_LIBRARY_DIR=${_DEVTOOLS_LIBRARY_DIR:-@pkgdatadir@}
 
-source /usr/share/makepkg/util/message.sh
+source /data/usr/share/makepkg/util/message.sh
 
 set -e
 

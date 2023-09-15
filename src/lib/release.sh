@@ -13,7 +13,7 @@ source "${_DEVTOOLS_LIBRARY_DIR}"/lib/util/pacman.sh
 # shellcheck source=src/lib/valid-repos.sh
 source "${_DEVTOOLS_LIBRARY_DIR}"/lib/valid-repos.sh
 
-source /usr/share/makepkg/util/util.sh
+source /data/usr/share/makepkg/util/util.sh
 
 set -e
 
