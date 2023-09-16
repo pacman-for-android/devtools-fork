@@ -18,7 +18,7 @@ check_root() {
 	if type -P sudo >/dev/null; then
 		exec sudo --preserve-env="${keepenv}" -- "${orig_argv[@]}"
 	else
-		exec su root -c "$(printf ' %q' "${orig_argv[@]}")"
+		exec su root -p -c "ORIG_USER=\"$USER\" USER=root HOME=/data/home/root /data/usr/bin/bash -c '$(printf ' %q' "${orig_argv[@]}")'"
 	fi
 }
 

@@ -36,8 +36,9 @@ bindmounts_rw=()
 
 copy=$USER
 [[ -n ${SUDO_USER:-} ]] && copy=$SUDO_USER
+[[ -n ${ORIG_USER:-} ]] && copy=$ORIG_USER
 [[ -z "$copy" || $copy = root ]] && copy=copy
-src_owner=${SUDO_USER:-$USER}
+src_owner=${ORIG_USER:-${SUDO_USER:-$USER}}
 
 usage() {
 	echo "Usage: ${0##*/} [options] -r <chrootdir> [--] [makepkg args]"
@@ -142,7 +143,7 @@ install_packages() {
 	pkgnames=("${install_pkgs[@]##*/}")
 
 	cp -- "${install_pkgs[@]}" "$copydir/root/"
-	arch-chroot "$copydir" "${bindmounts_ro[@]}" "${bindmounts_rw[@]}" \
+	arch-nspawn "$copydir" "${bindmounts_ro[@]}" "${bindmounts_rw[@]}" \
 		bash -c 'yes y | pacman -U -- "$@"' -bash "${pkgnames[@]/#//root/}"
 	ret=$?
 	rm -- "${pkgnames[@]/#/$copydir/root/}"
@@ -169,7 +170,7 @@ prepare_chroot() {
 
 	$install -d "$copydir"/{build,startdir,{pkg,srcpkg,src,log}dest}
 
-	sed -e '/^MAKEFLAGS=/d' -e '/^PACKAGER=/d' -i "$copydir/etc/makepkg.conf"
+	sed -e '/^MAKEFLAGS=/d' -e '/^PACKAGER=/d' -i "$copydir/data/etc/makepkg.conf"
 	for x in BUILDDIR=/build PKGDEST=/pkgdest SRCPKGDEST=/srcpkgdest SRCDEST=/srcdest LOGDEST=/logdest \
 		"MAKEFLAGS='${MAKEFLAGS:-}'" "PACKAGER='${PACKAGER:-}'"
 	do
@@ -177,10 +178,10 @@ prepare_chroot() {
 		echo "$x" >>"$copydir/data/etc/makepkg.conf"
 	done
 
-	cat > "$copydir/data/etc/sudoers.d/builduser-pacman" <<EOF
-builduser ALL = NOPASSWD: /data/usr/bin/pacman
-EOF
-	chmod 440 "$copydir/data/etc/sudoers.d/builduser-pacman"
+# 	cat > "$copydir/data/etc/sudoers.d/builduser-pacman" <<EOF
+# builduser ALL = NOPASSWD: /data/usr/bin/pacman
+# EOF
+# 	chmod 440 "$copydir/data/etc/sudoers.d/builduser-pacman"
 
 	# This is a little gross, but this way the script is recreated every time in the
 	# working copy
@@ -239,9 +240,11 @@ download_sources() {
 	chown "$makepkg_user:" "$WORKDIR"
 
 	# Ensure sources are downloaded
-	sudo -u "$makepkg_user" --preserve-env=GNUPGHOME,SSH_AUTH_SOCK \
-		env SRCDEST="$SRCDEST" BUILDDIR="$WORKDIR" \
-		makepkg --config="$copydir/data/etc/makepkg.conf" --verifysource -o "${verifysource_args[@]}" ||
+	# sudo -u "$makepkg_user" --preserve-env=GNUPGHOME,SSH_AUTH_SOCK \
+	# 	env SRCDEST="$SRCDEST" BUILDDIR="$WORKDIR" \
+	# 	makepkg --config="$copydir/data/etc/makepkg.conf" --verifysource -o "${verifysource_args[@]}" ||
+	# 	die "Could not download sources."
+	su shell -p -c "/data/usr/bin/bash -c 'env SRCDEST='$SRCDEST' BUILDDIR='$WORKDIR' makepkg --config='$copydir/data/etc/makepkg.conf' --verifysource -o '${verifysource_args[@]}' '" ||
 		die "Could not download sources."
 }
 
@@ -299,7 +302,7 @@ done
 
 [[ ! -f PKGBUILD && -z "${install_pkgs[*]}" ]] && die 'This must be run in a directory containing a PKGBUILD.'
 [[ -n $makepkg_user && -z $(id -u "$makepkg_user") ]] && die 'Invalid makepkg user.'
-makepkg_user=${makepkg_user:-${SUDO_USER:-$USER}}
+makepkg_user=${makepkg_user:-${ORIG_USER:-${SUDO_USER:-$USER}}}
 
 check_root SOURCE_DATE_EPOCH,BUILDTOOL,BUILDTOOLVER,GNUPGHOME,SRCDEST,SRCPKGDEST,PKGDEST,LOGDEST,MAKEFLAGS,PACKAGER "${BASH_SOURCE[0]}" "$@"
 
@@ -348,7 +351,7 @@ if [[ ! -d $copydir ]] || (( clean_first )); then
 	sync_chroot "$chrootdir" "$copydir" "$copy"
 fi
 
-(( update_first )) && arch-chroot "$copydir" \
+(( update_first )) && arch-nspawn "$copydir" \
 		"${bindmounts_ro[@]}" "${bindmounts_rw[@]}" \
 		pacman -Syuu --noconfirm
 
@@ -407,7 +410,7 @@ else
 		for remotepkg in "${remotepkgs[@]}"; do
 			if [[ $remotepkg != file://* ]]; then
 				msg2 "Downloading current versions"
-				arch-chroot "$copydir" pacman --noconfirm -Swdd "${pkgnames[@]}"
+				arch-nspawn "$copydir" pacman --noconfirm -Swdd "${pkgnames[@]}"
 				mapfile -t remotepkgs < <(pacman --config "$copydir"/data/etc/pacman.conf \
 					--dbpath "$copydir"/data/var/lib/pacman \
 					-Sddp "${pkgnames[@]}")
