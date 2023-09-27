@@ -186,7 +186,7 @@ prepare_chroot() {
 	# This is a little gross, but this way the script is recreated every time in the
 	# working copy
 	{
-		printf '#!/bin/bash\n'
+		printf '#!/data/usr/bin/bash\n'
 		declare -f _chrootbuild
 		declare -p SOURCE_DATE_EPOCH 2>/dev/null || true
 		declare -p BUILDTOOL 2>/dev/null
@@ -242,12 +242,12 @@ download_sources() {
 	chown "$makepkg_user:" "$WORKDIR"
 
 	# Ensure sources are downloaded
-	# sudo -u "$makepkg_user" --preserve-env=GNUPGHOME,SSH_AUTH_SOCK \
-	# 	env SRCDEST="$SRCDEST" BUILDDIR="$WORKDIR" \
-	# 	makepkg --config="$copydir/data/etc/makepkg.conf" --verifysource -o "${verifysource_args[@]}" ||
-	# 	die "Could not download sources."
-	su shell -p -c "/data/usr/bin/bash -c 'env SRCDEST='$SRCDEST' BUILDDIR='$WORKDIR' makepkg --config='$copydir/data/etc/makepkg.conf' --verifysource -o '${verifysource_args[@]}' '" ||
+	sudo -u "$makepkg_user" --preserve-env=GNUPGHOME,SSH_AUTH_SOCK \
+		env SRCDEST="$SRCDEST" BUILDDIR="$WORKDIR" \
+		makepkg --config="$copydir/data/etc/makepkg.conf" --verifysource -o "${verifysource_args[@]}" ||
 		die "Could not download sources."
+	# su shell -p -c "/data/usr/bin/bash -c 'env SRCDEST='$SRCDEST' BUILDDIR='$WORKDIR' makepkg --config='$copydir/data/etc/makepkg.conf' --verifysource -o '${verifysource_args[@]}' '" ||
+	# 	die "Could not download sources."
 }
 
 move_logfiles() {
