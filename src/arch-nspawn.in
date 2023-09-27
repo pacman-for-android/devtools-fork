@@ -33,14 +33,16 @@ usage() {
 
 # save all args for check_root
 orig_args=("$@")
+mount_args=()
 
-while getopts 'hC:M:c:f:s' arg; do
+while getopts 'hC:M:c:f:sb:' arg; do
 	case "$arg" in
 		C) pac_conf="$OPTARG" ;;
 		M) makepkg_conf="$OPTARG" ;;
 		c) cache_dirs+=("$OPTARG") ;;
 		f) files+=("$OPTARG") ;;
 		s) nosetarch=1 ;;
+		b) mount_args+=("$OPTARG") ;;
 		h|?) usage ;;
 		*) error "invalid argument '%s'" "$arg"; usage ;;
 	esac
@@ -55,14 +57,12 @@ shift 1
 
 [[ -z $working_dir ]] && die 'Please specify a working directory.'
 
-nspawn_args=()
-
 if (( ${#cache_dirs[@]} == 0 )); then
 	mapfile -t cache_dirs < <(pacman-conf --config "${pac_conf:-$working_dir/data/etc/pacman.conf}" CacheDir)
 fi
 
 # shellcheck disable=2016
-host_mirrors=($(pacman-conf --repo extra Server 2> /dev/null | sed -r 's#(.*/)extra/os/.*#\1$repo/os/$arch#'))
+host_mirrors=($(pacman-conf --repo extra Server 2> /dev/null | sed -r 's#(.*/)extra#\1$repo#'))
 
 for host_mirror in "${host_mirrors[@]}"; do
 	if [[ $host_mirror == *file://* ]]; then
@@ -84,10 +84,10 @@ while read -r line; do
 	done
 done < <(pacman-conf --config "${pac_conf:-$working_dir/data/etc/pacman.conf}" --repo-list)
 
-nspawn_args+=("--bind ${cache_dirs[0]//:/\\:} $working_dir/${cache_dirs[0]//:/\\:}")
+mount_args+=("${cache_dirs[0]//:/\\:} $working_dir/${cache_dirs[0]//:/\\:}")
 
 for cache_dir in "${cache_dirs[@]:1}"; do
-	nspawn_args+=("--bind -o ro ${cache_dir//:/\\:} $working_dir/${cache_dirs[0]//:/\\:}")
+	mount_args+=("${cache_dir//:/\\:} $working_dir/${cache_dirs[0]//:/\\:}")
 done
 
 # {{{ functions
@@ -130,4 +130,21 @@ else
 	set_arch="${CARCH}"
 fi
 
-exec ${CARCH:+setarch "$set_arch"} arch-chroot "$working_dir" "$@"
+cleanup() {
+	for mount_arg in "${mount_args[@]}"; do
+		eval "mount_arg_arr=($mount_arg)"
+		sudo umount -R "${mount_arg_arr[1]}"
+	done
+
+	sudo umount -R "$working_dir"
+}
+
+mount --bind "$working_dir" "$working_dir"
+
+trap cleanup EXIT
+
+for mount_arg in "${mount_args[@]}"; do
+	sudo mount --bind $mount_arg
+done
+
+${CARCH:+setarch "$set_arch"} arch-chroot "$working_dir" "$@"

@@ -1,4 +1,4 @@
-#!/data/usr/bin/bash
+#!/data/usr/bin/bash -x
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -163,9 +163,10 @@ prepare_chroot() {
 	# We can't use useradd without chrooting, otherwise it invokes PAM modules
 	# which we might not be able to load (i.e. when building i686 packages on
 	# an x86_64 host).
+	sed -e '/^shell:/d' -i "$copydir"/data/etc/{passwd,shadow,group}
 	sed -e '/^builduser:/d' -i "$copydir"/data/etc/{passwd,shadow,group}
 	printf >>"$copydir/data/etc/group"  'builduser:x:%d:\n' "$builduser_gid"
-	printf >>"$copydir/data/etc/passwd" 'builduser:x:%d:%d:builduser:/build:/bin/bash\n' "$builduser_uid" "$builduser_gid"
+	printf >>"$copydir/data/etc/passwd" 'builduser:x:%d:%d:builduser:/build:/data/usr/bin/bash\n' "$builduser_uid" "$builduser_gid"
 	printf >>"$copydir/data/etc/shadow" 'builduser:!!:%d::::::\n' "$(( $(date -u +%s) / 86400 ))"
 
 	$install -d "$copydir"/{build,startdir,{pkg,srcpkg,src,log}dest}
@@ -178,10 +179,10 @@ prepare_chroot() {
 		echo "$x" >>"$copydir/data/etc/makepkg.conf"
 	done
 
-# 	cat > "$copydir/data/etc/sudoers.d/builduser-pacman" <<EOF
-# builduser ALL = NOPASSWD: /data/usr/bin/pacman
-# EOF
-# 	chmod 440 "$copydir/data/etc/sudoers.d/builduser-pacman"
+	cat > "$copydir/data/etc/sudoers.d/builduser-pacman" <<EOF
+builduser ALL = NOPASSWD: /data/usr/bin/pacman
+EOF
+	chmod 440 "$copydir/data/etc/sudoers.d/builduser-pacman"
 
 	# This is a little gross, but this way the script is recreated every time in the
 	# working copy
@@ -199,8 +200,6 @@ prepare_chroot() {
 		fi
 	} >"$copydir/chrootbuild"
 	chmod +x "$copydir/chrootbuild"
-	su -c mount --bind "${PWD//:/\\:}" "$copydir/startdir" 
-	su -c mount --bind "${SRCDEST//:/\\:}" "$copydir/srcdest"
 }
 
 # These functions aren't run in makechrootpkg,
@@ -373,8 +372,11 @@ download_sources
 
 prepare_chroot
 
-if arch-nspawn "$copydir" \
+if arch-nspawn \
+	-b "${PWD//:/\\:} $copydir/startdir" \
+	-b "${SRCDEST//:/\\:} $copydir/srcdest" \
 	"${bindmounts_ro[@]}" "${bindmounts_rw[@]}" \
+	"$copydir" \
 	/chrootbuild "${makepkg_args[@]}"
 then
 	mapfile -t pkgnames < <(sudo -u "$makepkg_user" bash -c 'source PKGBUILD; printf "%s\n" "${pkgname[@]}"')
