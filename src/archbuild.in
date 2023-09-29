@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/usr/bin/bash
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -43,7 +43,7 @@ for arch_mount in "${arch_mounts[@]}"; do
 	fi
 done
 
-chroots='/var/lib/archbuild'
+chroots='/data/var/lib/archbuild'
 clean_first=false
 
 pacman_config="@pkgdatadir@/pacman.conf.d/${repo}.conf"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/usr/bin/bash
 #
 # lddd - find broken library links on your machine
 #
@@ -12,7 +12,7 @@ source "${_DEVTOOLS_LIBRARY_DIR}"/lib/common.sh
 ifs=$IFS
 IFS="${IFS}:"
 
-libdirs="/lib /usr/lib /usr/local/lib $(cat /etc/ld.so.conf.d/*)"
+libdirs="/data/usr/lib /data/usr/local/lib $(cat /etc/ld.so.conf.d/*)"
 extras=
 
 TEMPDIR=$(mktemp -d --tmpdir lddd-script.XXXX)

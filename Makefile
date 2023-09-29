@@ -25,28 +25,15 @@ COMMITPKG_LINKS = \
 	extrapkg \
 	extra-testingpkg \
 	extra-stagingpkg \
-	multilibpkg \
-	multilib-testingpkg \
-	multilib-stagingpkg \
 	kde-unstablepkg \
 	gnome-unstablepkg
 
 ARCHBUILD_LINKS = \
-	core-testing-x86_64-build \
-	core-testing-x86_64_v3-build \
-	core-staging-x86_64-build \
-	core-staging-x86_64_v3-build \
-	extra-x86_64-build \
-	extra-x86_64_v3-build \
-	extra-testing-x86_64-build \
-	extra-testing-x86_64_v3-build \
-	extra-staging-x86_64-build \
-	extra-staging-x86_64_v3-build \
-	multilib-build \
-	multilib-testing-build \
-	multilib-staging-build \
-	kde-unstable-x86_64-build \
-	gnome-unstable-x86_64-build
+	core-testing-aarch64-build \
+	core-staging-aarch64-build \
+	extra-aarch64-build \
+	extra-testing-aarch64-build \
+	extra-staging-aarch64-build
 
 COMPLETIONS = $(addprefix $(BUILDDIR)/,$(patsubst %.in,%,$(wildcard contrib/completion/*/*)))
 
@@ -159,7 +146,7 @@ dist:
 	git archive --format=tar --prefix=devtools-$(V)/ v$(V) | gzip > devtools-$(V).tar.gz
 	gpg --detach-sign --use-agent devtools-$(V).tar.gz
 
-check: $(BINPROGS_SRC) $(LIBRARY_SRC) contrib/completion/bash/devtools.in config/makepkg/x86_64.conf contrib/makepkg/PKGBUILD.proto
+check: $(BINPROGS_SRC) $(LIBRARY_SRC) contrib/completion/bash/devtools.in config/makepkg/aarch64.conf contrib/makepkg/PKGBUILD.proto
 	shellcheck $^
 
 .PHONY: all binprogs library completion conf man clean install uninstall tag dist upload check

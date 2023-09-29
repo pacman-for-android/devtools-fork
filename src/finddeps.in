@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/usr/bin/bash
 #
 # finddeps - find packages that depend on a given depname
 #

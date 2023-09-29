@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/usr/bin/bash
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -28,7 +28,7 @@ _EOF_
 
 RMDIR=0
 WARN=0
-MAKEPKG_CONF=/etc/makepkg.conf
+MAKEPKG_CONF=/data/etc/makepkg.conf
 
 # option checking
 while (( $# )); do

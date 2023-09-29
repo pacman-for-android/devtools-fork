@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/usr/bin/bash
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -6,8 +6,8 @@ _DEVTOOLS_LIBRARY_DIR=${_DEVTOOLS_LIBRARY_DIR:-@pkgdatadir@}
 # shellcheck source=src/lib/common.sh
 source "${_DEVTOOLS_LIBRARY_DIR}"/lib/common.sh
 
-source /usr/share/makepkg/util/util.sh
-source /usr/share/makepkg/srcinfo.sh
+source /data/usr/share/makepkg/util/util.sh
+source /data/usr/share/makepkg/srcinfo.sh
 
 
 check_pkgbuild_validity() {
@@ -38,11 +38,11 @@ check_pkgbuild_validity() {
 }
 
 # Source makepkg.conf; fail if it is not found
-if [[ -r '/etc/makepkg.conf' ]]; then
+if [[ -r '/data/etc/makepkg.conf' ]]; then
 	# shellcheck source=config/makepkg/x86_64.conf
-	source '/etc/makepkg.conf'
+	source '/data/etc/makepkg.conf'
 else
-	die '/etc/makepkg.conf not found!'
+	die '/data/etc/makepkg.conf not found!'
 fi
 
 # Source user-specific makepkg.conf overrides

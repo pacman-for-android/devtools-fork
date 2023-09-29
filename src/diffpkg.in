@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/usr/bin/bash
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -46,8 +46,8 @@ usage() {
 _EOF_
 }
 
-MAKEPKG_CONF=/etc/makepkg.conf
-POOLDIR=/srv/ftp/pool
+MAKEPKG_CONF=/data/etc/makepkg.conf
+POOLDIR=/data/srv/ftp/pool
 
 VERBOSE=0
 TARLIST=0
@@ -190,7 +190,7 @@ tar_list() {
 	bsdtar tf "$*" | if (( VERBOSE )); then
 		cat
 	else
-		sed -E 's|^usr/lib/modules/[0-9][^/]+|usr/lib/modules/[…]|g'
+		sed -E 's|^data/usr/lib/modules/[0-9][^/]+|data/usr/lib/modules/[…]|g'
 	fi | sort
 }
 
