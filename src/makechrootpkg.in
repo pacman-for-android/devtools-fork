@@ -200,6 +200,12 @@ EOF
 		fi
 	} >"$copydir/chrootbuild"
 	chmod +x "$copydir/chrootbuild"
+
+	# Create /bin/sh symlink to bash
+	# Note than on System-As-Root Android, /bin/sh is a mksh shell, which differs from bash
+	mkdir -p "$copydir/bin"
+	rm -f "$copydir/bin/sh"
+	ln -sf /data/usr/bin/bash "$copydir/bin/sh"
 }
 
 # These functions aren't run in makechrootpkg,
